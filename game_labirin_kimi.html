@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kimi dan Labirin — Dari Hobi Menjadi Profesi</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome untuk Ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter & Fredoka untuk Tampilan Game Ceria -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        body {
+            font-family: 'Fredoka', 'Inter', sans-serif;
+            background-color: #2d5a27;
+            overflow: hidden;
+        }
+        .font-fredoka {
+            font-family: 'Fredoka', sans-serif;
+        }
+        .btn-bounce:active {
+            transform: scale(0.95);
+        }
+        .custom-shadow {
+            box-shadow: 0 8px 0 rgba(0,0,0,0.2);
+        }
+        .custom-shadow-sm {
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+        }
+        /* Custom Scrollbar for Modal */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { filter: drop-shadow(0 0 5px rgba(255, 223, 0, 0.8)); }
+            50% { filter: drop-shadow(0 0 15px rgba(255, 223, 0, 1)); }
+        }
+        .animate-glow {
+            animation: pulse-glow 2s infinite;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between items-center bg-emerald-900 text-slate-800 relative">
+
+    <!-- TOP NAVIGATION & STATUS BAR -->
+    <header id="game-header" class="w-full bg-emerald-800/90 border-b-4 border-emerald-950 p-2 sm:p-3 text-white flex justify-between items-center z-10 shadow-lg">
+        <!-- Title & Level Info -->
+        <div class="flex items-center space-x-2 sm:space-x-4">
+            <div class="bg-amber-400 text-amber-950 px-3 py-1 rounded-xl font-bold text-xs sm:text-sm border-2 border-amber-600 flex items-center gap-1 shadow">
+                <i class="fa-solid fa-graduation-cap"></i>
+                <span class="hidden sm:inline">PROGRES:</span>
+                <span id="question-tracker">1/15</span>
+            </div>
+            <!-- Progress Bar -->
+            <div class="w-24 sm:w-48 bg-emerald-950 rounded-full h-3 sm:h-4 border border-emerald-600 overflow-hidden relative">
+                <div id="progress-bar-inner" class="bg-gradient-to-r from-amber-400 to-yellow-300 h-full w-[0%] transition-all duration-500 rounded-full"></div>
+            </div>
+        </div>
+
+        <!-- Stats: Lives, Score, Timer -->
+        <div class="flex items-center space-x-3 sm:space-x-6">
+            <!-- Lives -->
+            <div id="lives-container" class="flex text-red-500 text-lg sm:text-2xl space-x-1 drop-shadow">
+                <i class="fa-solid fa-heart animate-bounce"></i>
+                <i class="fa-solid fa-heart animate-bounce"></i>
+                <i class="fa-solid fa-heart animate-bounce"></i>
+            </div>
+            
+            <!-- Score -->
+            <div class="bg-emerald-950/80 px-3 py-1 rounded-xl border border-emerald-600 flex items-center gap-2">
+                <i class="fa-solid fa-star text-yellow-400 text-sm sm:text-base"></i>
+                <span id="score-text" class="font-bold text-sm sm:text-lg text-yellow-300">0</span>
+            </div>
+
+            <!-- Timer -->
+            <div class="bg-emerald-950/80 px-3 py-1 rounded-xl border border-emerald-600 flex items-center gap-2 hidden sm:flex">
+                <i class="fa-solid fa-clock text-cyan-400 text-sm"></i>
+                <span id="timer-text" class="font-bold text-sm text-cyan-200">00:00</span>
+            </div>
+
+            <!-- Controls (Pause & Sound) -->
+            <div class="flex items-center space-x-2">
+                <button id="btn-sound" onclick="toggleAudio()" class="w-8 h-8 sm:w-10 sm:h-10 bg-amber-500 hover:bg-amber-400 text-amber-950 rounded-xl font-bold flex items-center justify-center border-b-2 border-amber-700 btn-bounce">
+                    <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+                </button>
+                <button id="btn-pause" onclick="togglePause()" class="w-8 h-8 sm:w-10 sm:h-10 bg-cyan-500 hover:bg-cyan-400 text-cyan-950 rounded-xl font-bold flex items-center justify-center border-b-2 border-cyan-700 btn-bounce">
+                    <i class="fa-solid fa-pause"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN GAME CANVAS CONTAINER -->
+    <main class="relative flex-1 w-full flex justify-center items-center p-1 sm:p-4 overflow-hidden">
+        <canvas id="gameCanvas" class="bg-emerald-700 rounded-2xl shadow-2xl border-4 border-emerald-600 cursor-pointer max-w-full max-h-full object-contain"></canvas>
+
+        <!-- Floating Hint Button -->
+        <button id="btn-hint-floating" onclick="showHintModal()" class="absolute top-4 right-4 bg-amber-400 hover:bg-amber-300 text-amber-950 font-bold px-3 py-2 rounded-2xl border-b-4 border-amber-600 shadow-lg flex items-center gap-2 btn-bounce z-10 text-xs sm:text-sm">
+            <i class="fa-solid fa-lightbulb text-yellow-600 text-lg"></i>
+            <span>PETUNJUK</span>
+        </button>
+    </main>
+
+    <!-- CONTROLS FOOTER (Mobile D-Pad / Touch) -->
+    <footer id="game-controls" class="w-full bg-emerald-950/80 p-2 border-t-2 border-emerald-800 flex justify-between items-center z-10 px-4 sm:px-12">
+        <!-- Touch Instructions / Hint -->
+        <div class="text-xs text-emerald-200 hidden md:block">
+            <p><i class="fa-solid fa-keyboard mr-1"></i> Gunakan <strong>Panah Keyboard / WASD</strong> untuk bergerak.</p>
+            <p><i class="fa-solid fa-hand-pointer mr-1"></i> Klik & Tahan Mouse / Sentuh layar untuk memandu Kimi.</p>
+        </div>
+
+        <!-- Virtual Joystick / D-Pad for Touch Devices -->
+        <div class="flex justify-center items-center w-full md:w-auto my-1">
+            <div class="grid grid-cols-3 gap-1 sm:gap-2 w-36 sm:w-44">
+                <div></div>
+                <button id="btn-up" class="bg-amber-400 active:bg-amber-500 text-amber-950 font-extrabold p-3 rounded-2xl shadow-md border-b-4 border-amber-600 flex justify-center items-center btn-bounce">
+                    <i class="fa-solid fa-arrow-up text-lg sm:text-xl"></i>
+                </button>
+                <div></div>
+                <button id="btn-left" class="bg-amber-400 active:bg-amber-500 text-amber-950 font-extrabold p-3 rounded-2xl shadow-md border-b-4 border-amber-600 flex justify-center items-center btn-bounce">
+                    <i class="fa-solid fa-arrow-left text-lg sm:text-xl"></i>
+                </button>
+                <button id="btn-down" class="bg-amber-400 active:bg-amber-500 text-amber-950 font-extrabold p-3 rounded-2xl shadow-md border-b-4 border-amber-600 flex justify-center items-center btn-bounce">
+                    <i class="fa-solid fa-arrow-down text-lg sm:text-xl"></i>
+                </button>
+                <button id="btn-right" class="bg-amber-400 active:bg-amber-500 text-amber-950 font-extrabold p-3 rounded-2xl shadow-md border-b-4 border-amber-600 flex justify-center items-center btn-bounce">
+                    <i class="fa-solid fa-arrow-right text-lg sm:text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Action / Jump Button for Mobile -->
+        <div class="hidden md:flex items-center text-xs text-emerald-200">
+            <span>🚩 <strong>Checkpoint</strong> aktif di Soal 5 & 10!</span>
+        </div>
+    </footer>
+
+    <!-- ================= MODAL SCREEN OVERLAYS ================= -->
+
+    <!-- 1. START MENU OVERLAY -->
+    <div id="start-screen" class="fixed inset-0 bg-emerald-950/90 backdrop-blur-sm flex flex-col justify-center items-center z-50 p-4 text-center">
+        <div class="bg-emerald-800 border-4 border-amber-400 rounded-3xl p-6 sm:p-8 max-w-lg w-full custom-shadow relative overflow-hidden animate-float">
+            <!-- Background Decorative Leaves -->
+            <i class="fa-solid fa-leaf absolute -top-4 -left-4 text-6xl text-emerald-600/40 transform -rotate-45"></i>
+            <i class="fa-solid fa-tree absolute -bottom-6 -right-6 text-8xl text-emerald-700/30"></i>
+
+            <!-- Mascot Icon / Illustration -->
+            <div class="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4 bg-amber-300 rounded-full border-4 border-amber-500 p-2 shadow-inner flex items-center justify-center">
+                <svg viewBox="0 0 100 100" class="w-full h-full">
+                    <!-- Kimi Face SVG -->
+                    <circle cx="50" cy="55" r="35" fill="#f97316" />
+                    <polygon points="20,30 35,10 40,35" fill="#ea580c" />
+                    <polygon points="80,30 65,10 60,35" fill="#ea580c" />
+                    <circle cx="38" cy="50" r="6" fill="#ffffff" />
+                    <circle cx="62" cy="50" r="6" fill="#ffffff" />
+                    <circle cx="38" cy="50" r="3" fill="#1e293b" />
+                    <circle cx="62" cy="50" r="3" fill="#1e293b" />
+                    <polygon points="50,58 45,63 55,63" fill="#fb7185" />
+                    <path d="M 42 66 Q 50 72 58 66" stroke="#475569" stroke-width="2" fill="none" />
+                </svg>
+            </div>
+
+            <h1 class="text-2xl sm:text-4xl font-extrabold text-amber-300 drop-shadow-md mb-1 font-fredoka">
+                🐱 KIMI DAN LABIRIN
+            </h1>
+            <h2 class="text-sm sm:text-lg font-bold text-emerald-100 mb-4">
+                DARI HOBI MENJADI PROFESI
+            </h2>
+
+            <p class="text-xs sm:text-sm text-emerald-200 mb-6 bg-emerald-900/60 p-3 rounded-2xl border border-emerald-700">
+                “Bantu Kimi menemukan jalan keluar di kebun misterius dengan menjawab 15 soal tentang hobi dan profesi!”
+            </p>
+
+            <button onclick="startGame()" class="w-full bg-amber-400 hover:bg-amber-300 text-amber-950 font-extrabold text-lg sm:text-xl py-3 sm:py-4 rounded-2xl border-b-4 border-amber-600 custom-shadow-sm btn-bounce flex items-center justify-center gap-3">
+                <i class="fa-solid fa-play text-2xl"></i>
+                <span>MULAI PETUALANGAN</span>
+            </button>
+            
+            <div class="mt-4 text-xs text-amber-200/80 font-semibold">
+                Siswa Kelas 6 SD • Bahasa Indonesia
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. QUESTION MODAL -->
+    <div id="question-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 p-3 hidden">
+        <div class="bg-amber-50 border-4 border-amber-400 rounded-3xl p-5 sm:p-7 max-w-2xl w-full custom-shadow relative max-h-[90vh] flex flex-col justify-between overflow-y-auto">
+            <!-- Header Info -->
+            <div class="flex justify-between items-center mb-3 border-b-2 border-amber-200 pb-2">
+                <span id="modal-q-number" class="bg-amber-400 text-amber-950 px-3 py-1 rounded-xl font-bold text-xs sm:text-sm">
+                    ✨ Tantangan #1/15
+                </span>
+                <span class="text-xs font-semibold text-amber-800">
+                    <i class="fa-solid fa-book-open mr-1"></i> Dari Hobi Menjadi Profesi
+                </span>
+            </div>
+
+            <!-- Question Text Box -->
+            <div class="mb-4 bg-white p-4 rounded-2xl border border-amber-200 shadow-sm">
+                <p id="modal-q-text" class="text-sm sm:text-base font-semibold text-slate-800 leading-relaxed">
+                    Loading soal...
+                </p>
+            </div>
+
+            <!-- Mascot Kimi Reacts Box -->
+            <div id="modal-kimi-reaction" class="flex items-center gap-3 bg-amber-100 p-2 sm:p-3 rounded-2xl border border-amber-300 mb-4">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 bg-amber-400 rounded-full flex items-center justify-center text-2xl border-2 border-amber-600">
+                    🐱
+                </div>
+                <p id="modal-kimi-msg" class="text-xs sm:text-sm text-amber-900 font-medium">
+                    Kimi sedang berpikir... Pilihlah jawaban yang tepat ya!
+                </p>
+            </div>
+
+            <!-- Options Grid -->
+            <div id="options-container" class="grid grid-cols-1 gap-2.5 mb-4">
+                <!-- Dynamic Button Options Inserted by JS -->
+            </div>
+
+            <!-- Feedback Alert Box -->
+            <div id="feedback-box" class="hidden p-3 rounded-2xl mb-3 text-xs sm:text-sm font-bold flex items-center justify-between">
+                <span id="feedback-text"></span>
+                <button id="btn-next-q" onclick="nextQuestion()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-xl font-extrabold btn-bounce text-xs sm:text-sm hidden">
+                    LANJUTKAN <i class="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+            </div>
+
+            <!-- Bottom Modal Actions -->
+            <div class="flex justify-between items-center pt-2">
+                <button onclick="showHintModal()" class="text-amber-700 hover:text-amber-900 text-xs sm:text-sm font-bold flex items-center gap-1">
+                    <i class="fa-solid fa-lightbulb text-yellow-500"></i> Butuh Petunjuk?
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. HINT MODAL -->
+    <div id="hint-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 hidden">
+        <div class="bg-emerald-800 border-4 border-amber-400 rounded-3xl p-6 max-w-md w-full text-white custom-shadow text-center">
+            <div class="w-14 h-14 bg-amber-400 text-amber-950 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-3 shadow">
+                💡
+            </div>
+            <h3 class="text-xl font-bold text-amber-300 mb-2">Petunjuk Pembelajaran</h3>
+            <p id="hint-modal-text" class="text-xs sm:text-sm text-emerald-100 bg-emerald-900/80 p-4 rounded-2xl mb-5 leading-relaxed text-left border border-emerald-700">
+                Petunjuk akan disesuaikan dengan soal yang dihadapi...
+            </p>
+            <button onclick="closeHintModal()" class="w-full bg-amber-400 hover:bg-amber-300 text-amber-950 font-extrabold py-2.5 rounded-2xl border-b-4 border-amber-600 btn-bounce">
+                PAHAM, KEMBALI
+            </button>
+        </div>
+    </div>
+
+    <!-- 4. PAUSE MODAL -->
+    <div id="pause-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 p-4 hidden">
+        <div class="bg-emerald-800 border-4 border-cyan-400 rounded-3xl p-6 max-w-sm w-full text-white custom-shadow text-center">
+            <h3 class="text-2xl font-extrabold text-cyan-300 mb-4">⏸️ PERMAINAN DIPAUSE</h3>
+            <div class="space-y-3">
+                <button onclick="togglePause()" class="w-full bg-cyan-400 hover:bg-cyan-300 text-cyan-950 font-extrabold py-3 rounded-2xl border-b-4 border-cyan-600 btn-bounce">
+                    LANJUTKAN
+                </button>
+                <button onclick="restartGame()" class="w-full bg-amber-400 hover:bg-amber-300 text-amber-950 font-extrabold py-3 rounded-2xl border-b-4 border-amber-600 btn-bounce">
+                    ULANG DARI AWAL
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. GAME OVER / REST MODAL -->
+    <div id="gameover-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4 hidden">
+        <div class="bg-rose-900 border-4 border-rose-500 rounded-3xl p-6 max-w-md w-full text-white custom-shadow text-center">
+            <div class="text-5xl mb-2">😿</div>
+            <h3 class="text-2xl font-extrabold text-rose-200 mb-2">Kimi Butuh Istirahat!</h3>
+            <p class="text-xs sm:text-sm text-rose-100 mb-6 bg-rose-950/60 p-3 rounded-2xl border border-rose-800">
+                Kesempatan hati habis. Jangan berkecil hati, kamu bisa mencoba lagi dari Checkpoint terakhir!
+            </p>
+            <button onclick="restartFromCheckpoint()" class="w-full bg-amber-400 hover:bg-amber-300 text-amber-950 font-extrabold py-3 rounded-2xl border-b-4 border-amber-600 btn-bounce flex items-center justify-center gap-2">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span>COBA LAGI (CHECKPOINT)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 6. VICTORY / WIN MODAL -->
+    <div id="victory-modal" class="fixed inset-0 bg-emerald-950/95 backdrop-blur-md flex justify-center items-center z-50 p-4 hidden overflow-y-auto">
+        <div class="bg-emerald-800 border-4 border-amber-400 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-white custom-shadow text-center my-auto animate-float">
+            <div class="text-6xl mb-2 animate-bounce">🏆</div>
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-amber-300 mb-1 font-fredoka">🎉 SELAMAT! 🎉</h2>
+            <p class="text-xs sm:text-sm text-emerald-100 mb-4">
+                KIMI BERHASIL MENYELESAIKAN LABIRIN DARI HOBI MENJADI PROFESI!
+            </p>
+
+            <!-- Results Summary Card -->
+            <div class="bg-emerald-900/80 p-4 rounded-2xl border border-emerald-700 text-left space-y-2 mb-6">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-emerald-300">⭐ Skor Akhir:</span>
+                    <span id="final-score" class="font-bold text-yellow-300 text-lg">0</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-emerald-300">🎯 Soal Benar:</span>
+                    <span id="final-correct" class="font-bold text-emerald-200">15 / 15</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-emerald-300">⏱️ Waktu Bermain:</span>
+                    <span id="final-time" class="font-bold text-cyan-200">00:00</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-emerald-300">💡 Petunjuk Digunakan:</span>
+                    <span id="final-hints" class="font-bold text-amber-200">0</span>
+                </div>
+                <div class="pt-2 border-t border-emerald-700 flex justify-between items-center">
+                    <span class="text-xs text-emerald-300">Gelar Kamu:</span>
+                    <span id="final-rank" class="bg-amber-400 text-amber-950 px-3 py-1 rounded-xl font-extrabold text-xs">MASTER PROFESI</span>
+                </div>
+            </div>
+
+            <p class="text-xs text-amber-200 mb-6 italic">
+                “Kamu hebat! Terus kembangkan hobimu untuk meraih cita-citamu di masa depan!”
+            </p>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="restartGame()" class="bg-amber-400 hover:bg-amber-300 text-amber-950 font-extrabold py-3 rounded-2xl border-b-4 border-amber-600 btn-bounce text-sm">
+                    🔄 MAIN LAGI
+                </button>
+                <button onclick="showStartScreen()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-3 rounded-2xl border-b-4 border-emerald-800 btn-bounce text-sm">
+                    🏠 MENU UTAMA
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================================================
+           AUDIO SYNTHESIZER (Web Audio API - Sound Effects & Music)
+           ========================================================================== */
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.soundOn = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playTone(freq, type = 'sine', duration = 0.1, volume = 0.1) {
+                if (!this.soundOn) return;
+                this.init();
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e){}
+            }
+
+            playCorrect() {
+                if (!this.soundOn) return;
+                this.playTone(523.25, 'triangle', 0.1, 0.15); // C5
+                setTimeout(() => this.playTone(659.25, 'triangle', 0.1, 0.15), 100); // E5
+                setTimeout(() => this.playTone(783.99, 'triangle', 0.25, 0.2), 200); // G5
+            }
+
+            playWrong() {
+                if (!this.soundOn) return;
+                this.playTone(220, 'sawtooth', 0.15, 0.15);
+                setTimeout(() => this.playTone(180, 'sawtooth', 0.25, 0.15), 120);
+            }
+
+            playStep() {
+                if (!this.soundOn) return;
+                this.playTone(300 + Math.random()*50, 'sine', 0.04, 0.02);
+            }
+
+            playWin() {
+                if (!this.soundOn) return;
+                const notes = [400, 500, 600, 800, 1000];
+                notes.forEach((n, i) => {
+                    setTimeout(() => this.playTone(n, 'sine', 0.2, 0.15), i * 120);
+                });
+            }
+        }
+
+        const soundFX = new SoundEngine();
+
+        function toggleAudio() {
+            soundFX.soundOn = !soundFX.soundOn;
+            const icon = document.getElementById('sound-icon');
+            if(soundFX.soundOn) {
+                icon.className = 'fa-solid fa-volume-high';
+            } else {
+                icon.className = 'fa-solid fa-volume-xmark';
+            }
+        }
+
+        /* ==========================================================================
+           GAME DATA & 15 SOAL (DARI HOBI MENJADI PROFESI)
+           ========================================================================== */
+        const QUESTION_DATABASE = [
+            {
+                id: 1,
+                question: "Alya mengamati kegiatan kakaknya yang memiliki hobi menggambar. Kakaknya sering menggambar tokoh kartun dan pemandangan menggunakan pensil warna. Seiring waktu, kakaknya mulai menerima pesanan gambar dari beberapa orang.\n\nBerdasarkan hasil pengamatan tersebut, profesi yang sesuai dengan hobi kakak Alya adalah ....",
+                options: ["A. Koki", "B. Ilustrator", "C. Petani", "D. Atlet"],
+                answer: 1, // B
+                hint: "Pikirkan profesi di bidang seni visual yang bertugas membuat gambar atau karakter secara profesional!"
+            },
+            {
+                id: 2,
+                question: "Pada hari Minggu, Rina mengamati kegiatan ibunya di dapur. Ibunya memiliki hobi membuat kue sejak masih muda. Setiap pagi, ibunya mencoba resep baru dan menghias kue dengan berbagai bentuk. Kini, kue buatannya sering dipesan untuk acara ulang tahun.\n\nKesimpulan yang tepat berdasarkan pengamatan tersebut adalah ....",
+                options: [
+                    "A. Hobi memasak dapat dikembangkan menjadi usaha atau profesi pembuat kue.",
+                    "B. Hobi memasak hanya dapat dilakukan untuk mengisi waktu luang.",
+                    "C. Semua orang yang suka memasak harus menjadi pemilik restoran.",
+                    "D. Membuat kue tidak membutuhkan keterampilan khusus."
+                ],
+                answer: 0, // A
+                hint: "Cari kesimpulan logis yang menunjukkan bahwa hobi yang ditekuni secara konsisten dapat bernilai ekonomi/profesi."
+            },
+            {
+                id: 3,
+                question: "Dimas mengamati kegiatan pamannya yang gemar memotret pemandangan alam. Pamannya sering pergi ke taman dan pantai untuk mengambil gambar. Ia memperhatikan pencahayaan dan sudut pengambilan gambar agar hasil fotonya terlihat menarik. Beberapa hasil fotonya digunakan untuk keperluan promosi wisata.\n\nObjek yang diamati Dimas adalah ....",
+                options: [
+                    "A. Pemandangan alam di pantai",
+                    "B. Kegiatan wisatawan di taman",
+                    "C. Kegiatan paman yang memiliki hobi fotografi",
+                    "D. Peralatan yang digunakan untuk berwisata"
+                ],
+                answer: 2, // C
+                hint: "Objek pengamatan adalah subjek atau aktivitas utama yang menjadi fokus perhatian pengamat dari awal cerita."
+            },
+            {
+                id: 4,
+                question: "Pada hari Senin, Siska mengamati kegiatan kakaknya yang senang menulis cerita pendek. Kakaknya menulis cerita setiap malam di kamar. Ia mengembangkan tokoh, menentukan alur, dan memperbaiki tulisannya sebelum diterbitkan.\n\nKata yang menunjukkan keterangan waktu dalam teks tersebut adalah ....",
+                options: ["A. Di kamar", "B. Setiap malam", "C. Cerita pendek", "D. Tokoh dan alur"],
+                answer: 1, // B
+                hint: "Keterangan waktu menjelaskan kapan atau seberapa sering suatu aktivitas dilakukan."
+            },
+            {
+                id: 5,
+                question: "Rafi mengamati temannya yang memiliki hobi bermain gitar. Temannya berlatih dengan tekun setiap sore. Ia juga mengikuti kursus musik untuk meningkatkan kemampuannya. Setelah beberapa tahun, temannya mulai tampil dalam berbagai acara dan memperoleh bayaran.\n\nProfesi yang dapat dikembangkan dari hobi tersebut adalah ....",
+                options: ["A. Penjahit", "B. Arsitek", "C. Musisi", "D. Dokter"],
+                answer: 2, // C
+                hint: "Seseorang yang secara profesional memainkan alat musik atau menciptakan musik dinamakan..."
+            },
+            {
+                id: 6,
+                question: "Nadia mengamati kegiatan tetangganya yang gemar melukis. Tetangganya sering melukis pemandangan alam menggunakan cat air dan kanvas. Ia mengikuti pameran seni dan menjual beberapa hasil lukisannya kepada pengunjung.\n\nBerdasarkan hasil pengamatan tersebut, kegiatan yang menunjukkan bahwa hobi melukis dapat menjadi profesi adalah ....",
+                options: [
+                    "A. Melukis hanya ketika merasa bosan.",
+                    "B. Menyimpan semua lukisan tanpa pernah mengembangkannya.",
+                    "C. Menjual hasil lukisan kepada pengunjung pameran.",
+                    "D. Menggunakan cat air untuk bermain bersama teman."
+                ],
+                answer: 2, // C
+                hint: "Suatu hobi dapat menjadi profesi apabila menghasilkan nilai ekonomi dari penjualan karya."
+            },
+            {
+                id: 7,
+                question: "Mila mengamati latihan tari tradisional di sanggar dekat rumahnya. Para penari berlatih setiap Sabtu dengan bimbingan seorang pelatih. Mereka mempelajari gerakan, irama, dan ekspresi agar dapat tampil dengan baik. Beberapa penari kemudian diundang untuk tampil dalam acara kebudayaan.\n\nKesimpulan yang sesuai dengan teks tersebut adalah ....",
+                options: [
+                    "A. Hobi menari tidak dapat dikembangkan menjadi profesi.",
+                    "B. Hobi menari dapat dikembangkan menjadi profesi penari.",
+                    "C. Penari hanya dapat tampil di lingkungan sekolah.",
+                    "D. Menari tidak membutuhkan latihan rutin."
+                ],
+                answer: 1, // B
+                hint: "Kesimpulan merangkum fakta utama bahwa latihan menari rutin membuka jalan menjadi penari profesional."
+            },
+            {
+                id: 8,
+                question: "Dina mengamati kegiatan tetangganya yang gemar membuat kerajinan tangan dari kain perca. Ia membuat tas, dompet, dan gantungan kunci dengan berbagai warna. Hasil kerajinannya kemudian dijual di toko kerajinan dekat rumahnya dan mendapat banyak pesanan.\n\nKata yang menunjukkan keterangan tempat dalam teks tersebut adalah ....",
+                options: [
+                    "A. Dengan berbagai warna",
+                    "B. Banyak pesanan",
+                    "C. Di toko kerajinan",
+                    "D. Gemar membuat"
+                ],
+                answer: 2, // C
+                hint: "Keterangan tempat ditandai dengan kata depan lokasi seperti 'di', 'ke', atau 'dari'."
+            },
+            {
+                id: 9,
+                question: "Pada hari Rabu, Beni mengamati latihan sepak bola di lapangan dekat rumahnya. Para pemain berlatih menggiring bola, mengoper, dan menendang bola ke arah gawang. Mereka berlatih secara rutin untuk meningkatkan kemampuan dan kekompakan tim.\n\nInformasi yang sesuai dengan hasil pengamatan tersebut adalah ....",
+                options: [
+                    "A. Para pemain hanya berlatih ketika ada pertandingan.",
+                    "B. Latihan sepak bola dilakukan untuk meningkatkan kemampuan dan kekompakan tim.",
+                    "C. Semua pemain sepak bola pasti menjadi pelatih.",
+                    "D. Para pemain tidak perlu berlatih secara rutin."
+                ],
+                answer: 1, // B
+                hint: "Cari kalimat yang selaras dengan tujuan latihan pada kalimat terakhir teks."
+            },
+            {
+                id: 10,
+                question: "Pada hari Minggu, Putri mengamati kakaknya yang memiliki hobi merias wajah. Kakaknya berlatih menggunakan berbagai alat rias dan mempelajari teknik merias melalui video. Ia kemudian mulai menerima pelanggan untuk acara pernikahan dan wisuda.\n\nPenulisan huruf kapital yang tepat untuk kalimat pembuka laporan tersebut adalah ....",
+                options: [
+                    "A. pada hari Minggu, Putri mengamati kakaknya.",
+                    "B. Pada hari minggu, Putri mengamati kakaknya.",
+                    "C. Pada hari Minggu, Putri mengamati kakaknya.",
+                    "D. Pada Hari Minggu, putri mengamati kakaknya."
+                ],
+                answer: 2, // C
+                hint: "Huruf kapital digunakan pada awal kalimat, nama hari (Minggu), serta nama orang (Putri)."
+            },
+            {
+                id: 11,
+                question: "Arman mengamati kegiatan kakaknya yang senang membuat video. Kakaknya merekam kegiatan sehari-hari, mengedit video, dan menambahkan musik agar hasilnya menarik. Video tersebut diunggah ke internet dan mulai dikenal banyak orang. Kini, kakaknya bekerja sebagai konten kreator.\n\nProfesi kakak Arman adalah ....",
+                options: ["A. Konten kreator", "B. Fotografer", "C. Penulis buku", "D. Penyiar radio"],
+                answer: 0, // A
+                hint: "Perhatikan nama pekerjaan yang disebutkan secara langsung pada kalimat terakhir teks."
+            },
+            {
+                id: 12,
+                question: "Lina mengamati kegiatan bibinya yang gemar menjahit pakaian. Bibinya menggunakan mesin jahit, gunting, jarum, dan benang untuk membuat pakaian. Ia bekerja dengan teliti agar hasil jahitannya rapi dan nyaman digunakan.\n\nPerbaikan tanda baca yang tepat untuk kalimat berikut adalah:\n'Bibinya menggunakan mesin jahit gunting jarum dan benang.'",
+                options: [
+                    "A. Bibinya menggunakan mesin jahit, gunting, jarum, dan benang.",
+                    "B. Bibinya menggunakan mesin jahit gunting, jarum dan benang.",
+                    "C. Bibinya menggunakan mesin jahit, gunting jarum, dan benang.",
+                    "D. Bibinya menggunakan, mesin jahit gunting jarum dan benang."
+                ],
+                answer: 0, // A
+                hint: "Tanda koma (,) digunakan untuk memisahkan rincian unsur-unsur dalam deretan tiga item atau lebih."
+            },
+            {
+                id: 13,
+                question: "Pada hari Kamis, Edo mengamati kegiatan kakaknya yang gemar membaca buku sejarah. Kakaknya membaca berbagai buku di perpustakaan untuk menambah pengetahuan. Ia kemudian tertarik mempelajari sejarah lebih dalam dan bercita-cita menjadi sejarawan.\n\nTujuan pengamatan yang paling tepat adalah ....",
+                options: [
+                    "A. Mengetahui harga buku sejarah di perpustakaan.",
+                    "B. Mengetahui hubungan hobi membaca dengan cita-cita menjadi sejarawan.",
+                    "C. Mengetahui cara membuat perpustakaan.",
+                    "D. Mengetahui jumlah pengunjung perpustakaan."
+                ],
+                answer: 1, // B
+                hint: "Tujuan pengamatan yang tepat adalah untuk mengetahui keterkaitan hobi membaca dengan cita-cita masa depan."
+            },
+            {
+                id: 14,
+                question: "Pada hari Sabtu, Fajar mengamati kegiatan tetangganya yang suka merawat kucing. Tetangganya memberikan makanan, membersihkan kandang, dan memeriksa kesehatan kucing secara rutin. Ia juga mempelajari cara menangani hewan yang sakit. Kini, ia bekerja di klinik hewan.\n\nKesimpulan yang tepat berdasarkan teks tersebut adalah ....",
+                options: [
+                    "A. Hobi merawat hewan dapat menjadi salah satu langkah untuk menekuni profesi di bidang kesehatan hewan.",
+                    "B. Merawat hewan hanya bisa dilakukan sebagai kegiatan bermain.",
+                    "C. Semua orang yang memelihara kucing pasti menjadi dokter hewan.",
+                    "D. Bekerja di klinik hewan tidak membutuhkan pengetahuan tentang hewan."
+                ],
+                answer: 0, // A
+                hint: "Pilih kesimpulan yang paling tepat mengenai kaitan hobi merawat hewan dengan karier kesehatan hewan."
+            },
+            {
+                id: 15,
+                question: "Nisa mengamati kegiatan kakaknya yang gemar mempelajari benda-benda langit. Pada malam hari, kakaknya menggunakan teleskop untuk mengamati bintang dan planet. Ia juga membaca buku astronomi dan mengikuti kegiatan pengamatan di komunitas sains. Kakaknya bercita-cita menjadi astronom.\n\nBagian laporan yang memuat pernyataan bahwa hobi mempelajari benda langit dapat menjadi langkah awal untuk menekuni profesi astronom merupakan ....",
+                options: ["A. Judul laporan", "B. Waktu pengamatan", "C. Hasil pengamatan", "D. Kesimpulan pengamatan"],
+                answer: 3, // D
+                hint: "Bagian laporan yang merangkum inti pembahasan dan implikasi hobi ke profesi dinamakan kesimpulan."
+            }
+        ];
+
+        /* ==========================================================================
+           GAME ENGINE & CANVAS LABIRIN (MAZE SYSTEM)
+           ========================================================================== */
+        // Dynamic Canvas & Maze Setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Maze Grid Dimensions (15x15 Grid)
+        const GRID_ROWS = 15;
+        const GRID_COLS = 15;
+        let cellSize = 40;
+
+        // Maze map: 1 = Wall (Hedge/Bush), 0 = Path, 2 = Question Point, 3 = Start, 4 = Finish
+        // Designed to be clean, navigable, with 15 question points mapped along paths
+        const MAZE_MAP = [
+            [3,0,0,1,0,0,0,1,0,0,2,1,0,0,0],
+            [1,1,0,1,0,1,0,1,0,1,1,1,0,1,0],
+            [0,0,2,0,0,1,2,0,0,0,0,0,0,1,0],
+            [0,1,1,1,0,1,1,1,1,1,0,1,1,1,0],
+            [0,0,0,1,0,0,0,0,0,1,0,0,2,1,0],
+            [1,1,0,1,1,1,0,1,0,1,1,1,0,1,0],
+            [0,2,0,0,0,1,0,1,0,0,0,1,0,0,0],
+            [0,1,1,1,0,1,0,1,1,1,0,1,1,1,0],
+            [0,0,2,1,0,0,2,0,0,1,0,0,2,1,0],
+            [1,1,0,1,1,1,1,1,0,1,1,1,0,1,0],
+            [0,0,0,0,0,0,0,1,0,0,0,1,0,0,0],
+            [0,1,1,1,1,1,0,1,1,1,0,1,1,1,0],
+            [0,2,0,0,0,1,0,2,0,1,0,2,0,1,0],
+            [1,1,1,1,0,1,0,1,0,1,1,1,0,1,0],
+            [0,0,2,0,0,0,0,1,0,0,0,0,2,0,4]
+        ];
+
+        // Store positions of 15 question points extracted from MAZE_MAP
+        let questionPoints = [];
+
+        // Kimi Character State
+        const kimi = {
+            x: 0,
+            y: 0,
+            gridX: 0,
+            gridY: 0,
+            targetX: 0,
+            targetY: 0,
+            speed: 4,
+            isMoving: false,
+            dir: 'down', // 'up', 'down', 'left', 'right'
+            expression: 'happy', // 'happy', 'thinking', 'sad', 'victory'
+            bounceOffset: 0,
+            jumpAnim: 0
+        };
+
+        // Game State Variables
+        let gameState = 'START'; // 'START', 'PLAYING', 'QUESTION', 'PAUSED', 'GAMEOVER', 'VICTORY'
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let lives = 3;
+        let timerSeconds = 0;
+        let timerInterval = null;
+        let hintsUsed = 0;
+        let lastCheckpointIndex = 0;
+        let activeQuestionPoint = null;
+        let particles = [];
+        let gardenDecorations = [];
+
+        // Touch Control Variables
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        // Resize Canvas dynamically
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const maxW = container.clientWidth - 16;
+            const maxH = container.clientHeight - 16;
+            
+            const size = Math.min(maxW, maxH, 600);
+            canvas.width = size;
+            canvas.height = size;
+            cellSize = canvas.width / GRID_COLS;
+
+            // Recalculate Kimi canvas position
+            kimi.x = kimi.gridX * cellSize;
+            kimi.y = kimi.gridY * cellSize;
+            kimi.targetX = kimi.x;
+            kimi.targetY = kimi.y;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        /* ==========================================================================
+           INITIALIZATION & MAP PROCESSING
+           ========================================================================== */
+        function initMazeData() {
+            questionPoints = [];
+            let qCounter = 0;
+
+            for (let r = 0; r < GRID_ROWS; r++) {
+                for (let c = 0; c < GRID_COLS; c++) {
+                    if (MAZE_MAP[r][c] === 2) {
+                        qCounter++;
+                        questionPoints.push({
+                            id: qCounter,
+                            gridX: c,
+                            gridY: r,
+                            completed: false,
+                            questionData: QUESTION_DATABASE[qCounter - 1]
+                        });
+                    } else if (MAZE_MAP[r][c] === 3) {
+                        kimi.gridX = c;
+                        kimi.gridY = r;
+                        kimi.x = c * cellSize;
+                        kimi.y = r * cellSize;
+                        kimi.targetX = kimi.x;
+                        kimi.targetY = kimi.y;
+                    }
+                }
+            }
+
+            // Create background ambient particles (butterflies & clouds)
+            gardenDecorations = [];
+            for (let i = 0; i < 6; i++) {
+                gardenDecorations.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * 0.8,
+                    vy: (Math.random() - 0.5) * 0.8,
+                    size: Math.random() * 6 + 4,
+                    color: i % 2 === 0 ? '#fef08a' : '#f472b6',
+                    type: i % 2 === 0 ? 'butterfly' : 'cloud'
+                });
+            }
+        }
+
+        /* ==========================================================================
+           GAME LOOPS & RENDERING
+           ========================================================================== */
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw Garden Background Grass Texture
+            ctx.fillStyle = '#15803d'; // Rich green garden grass
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grid Pattern / Grass Details
+            ctx.strokeStyle = '#166534';
+            ctx.lineWidth = 1;
+            for (let r = 0; r < GRID_ROWS; r++) {
+                for (let c = 0; c < GRID_COLS; c++) {
+                    if ((r + c) % 2 === 0) {
+                        ctx.fillStyle = '#16a34a';
+                        ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+
+            // 2. Draw Maze Walls (Hedge / Bushes / Wooden Fences)
+            for (let r = 0; r < GRID_ROWS; r++) {
+                for (let c = 0; c < GRID_COLS; c++) {
+                    const x = c * cellSize;
+                    const y = r * cellSize;
+
+                    if (MAZE_MAP[r][c] === 1) {
+                        // Hedge Wall Block
+                        ctx.fillStyle = '#14532d';
+                        ctx.beginPath();
+                        ctx.roundRect(x + 2, y + 2, cellSize - 4, cellSize - 4, 8);
+                        ctx.fill();
+
+                        // Bush Highlight
+                        ctx.fillStyle = '#22c55e';
+                        ctx.beginPath();
+                        ctx.arc(x + cellSize/2, y + cellSize/2, cellSize/3, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Leaf Texture Detail
+                        ctx.fillStyle = '#86efac';
+                        ctx.beginPath();
+                        ctx.arc(x + cellSize/2 - 3, y + cellSize/2 - 3, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (MAZE_MAP[r][c] === 4) {
+                        // FINISH LINE
+                        ctx.fillStyle = '#f59e0b';
+                        ctx.fillRect(x, y, cellSize, cellSize);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = `bold ${cellSize*0.5}px Fredoka`;
+                        ctx.textAlign = 'center';
+                        ctx.fillText('🏆', x + cellSize/2, y + cellSize*0.7);
+                    }
+                }
+            }
+
+            // 3. Draw Question Points 🌟
+            questionPoints.forEach(qp => {
+                const qx = qp.gridX * cellSize + cellSize / 2;
+                const qy = qp.gridY * cellSize + cellSize / 2;
+
+                if (!qp.completed) {
+                    // Pulsing Star / Question Point Icon
+                    const pulse = Math.sin(Date.now() / 200) * 3;
+                    ctx.fillStyle = '#facc15';
+                    ctx.beginPath();
+                    ctx.arc(qx, qy, cellSize / 3 + pulse / 2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#ca8a04';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Icon / Number
+                    ctx.fillStyle = '#854d0e';
+                    ctx.font = `bold ${cellSize * 0.4}px Fredoka`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('❓', qx, qy);
+                } else {
+                    // Completed Checkpoint Flag / Star
+                    ctx.fillStyle = '#22c55e';
+                    ctx.beginPath();
+                    ctx.arc(qx, qy, cellSize / 4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = `bold ${cellSize * 0.3}px Fredoka`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('✓', qx, qy);
+                }
+            });
+
+            // 4. Draw Animated Decorations (Butterflies / Clouds)
+            gardenDecorations.forEach(dec => {
+                dec.x += dec.vx;
+                dec.y += dec.vy;
+                if (dec.x < 0) dec.x = canvas.width;
+                if (dec.x > canvas.width) dec.x = 0;
+                if (dec.y < 0) dec.y = canvas.height;
+                if (dec.y > canvas.height) dec.y = 0;
+
+                ctx.fillStyle = dec.color;
+                ctx.beginPath();
+                ctx.arc(dec.x, dec.y, dec.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 5. Draw Kimi Mascot 🐱
+            drawKimi();
+
+            // 6. Draw Particles (Sparkles / Confetti)
+            updateAndDrawParticles();
+        }
+
+        function drawKimi() {
+            ctx.save();
+            ctx.translate(kimi.x + cellSize / 2, kimi.y + cellSize / 2 - kimi.jumpAnim);
+
+            const r = cellSize * 0.38;
+
+            // Bounce effect when walking
+            if (kimi.isMoving) {
+                kimi.bounceOffset = Math.sin(Date.now() / 80) * 3;
+            } else {
+                kimi.bounceOffset = 0;
+            }
+
+            ctx.translate(0, kimi.bounceOffset);
+
+            // Tail
+            ctx.strokeStyle = '#ea580c';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.6, r * 0.2);
+            ctx.quadraticCurveTo(-r * 1.2, -r * 0.5, -r * 0.8, -r * 0.8);
+            ctx.stroke();
+
+            // Ears
+            ctx.fillStyle = '#ea580c';
+            // Left Ear
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.8, -r * 0.4);
+            ctx.lineTo(-r * 0.4, -r * 1.1);
+            ctx.lineTo(-r * 0.1, -r * 0.7);
+            ctx.fill();
+            // Right Ear
+            ctx.beginPath();
+            ctx.moveTo(r * 0.8, -r * 0.4);
+            ctx.lineTo(r * 0.4, -r * 1.1);
+            ctx.lineTo(r * 0.1, -r * 0.7);
+            ctx.fill();
+
+            // Inner Ears (Pink)
+            ctx.fillStyle = '#f472b6';
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.7, -r * 0.5);
+            ctx.lineTo(-r * 0.4, -r * 0.95);
+            ctx.lineTo(-r * 0.2, -r * 0.7);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(r * 0.7, -r * 0.5);
+            ctx.lineTo(r * 0.4, -r * 0.95);
+            ctx.lineTo(r * 0.2, -r * 0.7);
+            ctx.fill();
+
+            // Head / Body Base (Cute Orange Cat)
+            ctx.fillStyle = '#f97316';
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#c2410c';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Adventurer Bag Strap & Bag
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.arc(r * 0.5, r * 0.5, r * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(-r * 0.35, -r * 0.1, r * 0.28, 0, Math.PI * 2);
+            ctx.arc(r * 0.35, -r * 0.1, r * 0.28, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pupils
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            if (kimi.expression === 'happy' || kimi.expression === 'victory') {
+                ctx.arc(-r * 0.35, -r * 0.1, r * 0.16, 0, Math.PI * 2);
+                ctx.arc(r * 0.35, -r * 0.1, r * 0.16, 0, Math.PI * 2);
+            } else if (kimi.expression === 'thinking') {
+                ctx.arc(-r * 0.35, -r * 0.2, r * 0.14, 0, Math.PI * 2);
+                ctx.arc(r * 0.35, -r * 0.2, r * 0.14, 0, Math.PI * 2);
+            } else { // Sad / Wrong
+                ctx.arc(-r * 0.35, 0, r * 0.14, 0, Math.PI * 2);
+                ctx.arc(r * 0.35, 0, r * 0.14, 0, Math.PI * 2);
+            }
+            ctx.fill();
+
+            // Eye Shine
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(-r * 0.4, -r * 0.15, r * 0.08, 0, Math.PI * 2);
+            ctx.arc(r * 0.3, -r * 0.15, r * 0.08, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nose
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath();
+            ctx.arc(0, r * 0.1, r * 0.12, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Mouth according to Expression
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            if (kimi.expression === 'sad') {
+                ctx.arc(0, r * 0.4, r * 0.15, Math.PI, 0); // Frown
+            } else if (kimi.expression === 'thinking') {
+                ctx.moveTo(-r * 0.15, r * 0.3);
+                ctx.lineTo(r * 0.15, r * 0.3); // Straight line
+            } else {
+                ctx.arc(0, r * 0.15, r * 0.2, 0, Math.PI); // Smile
+            }
+            ctx.stroke();
+
+            // Cute Whiskers
+            ctx.strokeStyle = '#fdba74';
+            ctx.lineWidth = 1.5;
+            // Left Whiskers
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.6, 0); ctx.lineTo(-r * 1.1, -r * 0.1);
+            ctx.moveTo(-r * 0.6, r * 0.15); ctx.lineTo(-r * 1.1, r * 0.2);
+            // Right Whiskers
+            ctx.moveTo(r * 0.6, 0); ctx.lineTo(r * 1.1, -r * 0.1);
+            ctx.moveTo(r * 0.6, r * 0.15); ctx.lineTo(r * 1.1, r * 0.2);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        /* ==========================================================================
+           PARTICLE SYSTEM & VISUAL EFFECTS
+           ========================================================================== */
+        function spawnSparkles(x, y, count = 12) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    size: Math.random() * 6 + 3,
+                    color: ['#facc15', '#38bdf8', '#4ade80', '#f472b6'][Math.floor(Math.random() * 4)],
+                    life: 1.0
+                });
+            }
+        }
+
+        function updateAndDrawParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.03;
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        /* ==========================================================================
+           MOVEMENT & COLLISION LOGIC
+           ========================================================================== */
+        function moveKimi(dir) {
+            if (gameState !== 'PLAYING' || kimi.isMoving) return;
+
+            let nextGridX = kimi.gridX;
+            let nextGridY = kimi.gridY;
+
+            if (dir === 'up') nextGridY--;
+            if (dir === 'down') nextGridY++;
+            if (dir === 'left') nextGridX--;
+            if (dir === 'right') nextGridX++;
+
+            // Boundary & Wall Collision Check
+            if (nextGridX >= 0 && nextGridX < GRID_COLS && nextGridY >= 0 && nextGridY < GRID_ROWS) {
+                if (MAZE_MAP[nextGridY][nextGridX] !== 1) { // 1 is Wall
+                    kimi.gridX = nextGridX;
+                    kimi.gridY = nextGridY;
+                    kimi.targetX = kimi.gridX * cellSize;
+                    kimi.targetY = kimi.gridY * cellSize;
+                    kimi.isMoving = true;
+                    kimi.dir = dir;
+                    soundFX.playStep();
+                }
+            }
+        }
+
+        function updateKimiPosition() {
+            if (!kimi.isMoving) return;
+
+            const dx = kimi.targetX - kimi.x;
+            const dy = kimi.targetY - kimi.y;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist < kimi.speed) {
+                kimi.x = kimi.targetX;
+                kimi.y = kimi.targetY;
+                kimi.isMoving = false;
+
+                // Check collision with Question Points
+                checkQuestionPointTrigger();
+
+                // Check Finish Line
+                if (MAZE_MAP[kimi.gridY][kimi.gridX] === 4) {
+                    triggerVictory();
+                }
+            } else {
+                kimi.x += (dx / dist) * kimi.speed;
+                kimi.y += (dy / dist) * kimi.speed;
+            }
+        }
+
+        /* Check if Kimi reached an active Question Point */
+        function checkQuestionPointTrigger() {
+            const point = questionPoints.find(qp => qp.gridX === kimi.gridX && qp.gridY === kimi.gridY && !qp.completed);
+            if (point) {
+                activeQuestionPoint = point;
+                openQuestionModal(point);
+            }
+        }
+
+        /* ==========================================================================
+           GAME LOOP ENGINE
+           ========================================================================== */
+        function gameLoop() {
+            if (gameState === 'PLAYING') {
+                updateKimiPosition();
+            }
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        /* ==========================================================================
+           QUESTION & QUIZ SYSTEM
+           ========================================================================== */
+        function openQuestionModal(point) {
+            gameState = 'QUESTION';
+            kimi.expression = 'thinking';
+
+            const qData = point.questionData;
+            document.getElementById('modal-q-number').innerText = `✨ Tantangan Dari Hobi Menjadi Profesi #${point.id}/15`;
+            document.getElementById('modal-q-text').innerText = qData.question;
+            
+            // Reset feedback box
+            const fbBox = document.getElementById('feedback-box');
+            fbBox.className = 'hidden';
+            document.getElementById('btn-next-q').classList.add('hidden');
+
+            document.getElementById('modal-kimi-msg').innerText = "Kimi sedang berpikir... Pilihlah jawaban yang tepat ya!";
+
+            // Render Options
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+
+            qData.options.forEach((optText, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3.5 bg-white hover:bg-amber-100 text-slate-800 font-bold rounded-2xl border-2 border-amber-300 custom-shadow-sm btn-bounce text-xs sm:text-sm transition-all";
+                btn.innerText = optText;
+                btn.onclick = () => validateAnswer(idx, qData.answer, btn, point);
+                container.appendChild(btn);
+            });
+
+            document.getElementById('question-modal').classList.remove('hidden');
+            soundFX.playTone(600, 'sine', 0.15, 0.1);
+        }
+
+        function validateAnswer(selectedIndex, correctIndex, buttonEl, point) {
+            const container = document.getElementById('options-container');
+            const buttons = container.querySelectorAll('button');
+            buttons.forEach(b => b.disabled = true); // Disable all option buttons
+
+            const fbBox = document.getElementById('feedback-box');
+            const fbText = document.getElementById('feedback-text');
+            const nextBtn = document.getElementById('btn-next-q');
+
+            if (selectedIndex === correctIndex) {
+                // ANSWER CORRECT ✅
+                soundFX.playCorrect();
+                buttonEl.className = "w-full text-left p-3.5 bg-emerald-500 text-white font-bold rounded-2xl border-2 border-emerald-700 shadow-md text-xs sm:text-sm";
+                
+                kimi.expression = 'happy';
+                kimi.jumpAnim = 12;
+                setTimeout(() => kimi.jumpAnim = 0, 300);
+
+                // Add Score
+                score += 100;
+                document.getElementById('score-text').innerText = score;
+
+                // Mark Question Point as Completed
+                point.completed = true;
+                currentQuestionIndex++;
+                updateUIProgress();
+
+                // Checkpoint logic (Soal 5 & 10)
+                if (point.id === 5 || point.id === 10) {
+                    lastCheckpointIndex = point.id;
+                    fbText.innerHTML = "🎉 Hebat! Jawabanmu benar! <strong>🚩 CHECKPOINT DICAPAI!</strong>";
+                } else {
+                    fbText.innerHTML = "🎉 Hebat! Jawabanmu benar! (+100 Poin)";
+                }
+
+                fbBox.className = "p-3 rounded-2xl mb-3 text-xs sm:text-sm font-bold flex items-center justify-between bg-emerald-100 border border-emerald-400 text-emerald-900";
+                nextBtn.classList.remove('hidden');
+
+                // Visual Sparkles at Kimi
+                spawnSparkles(kimi.x + cellSize/2, kimi.y + cellSize/2, 20);
+
+            } else {
+                // ANSWER WRONG ❌
+                soundFX.playWrong();
+                buttonEl.className = "w-full text-left p-3.5 bg-rose-500 text-white font-bold rounded-2xl border-2 border-rose-700 shadow-md text-xs sm:text-sm";
+                
+                kimi.expression = 'sad';
+                
+                // Reduce life if multiple wrong attempts
+                lives--;
+                updateLivesDisplay();
+
+                fbText.innerText = "💭 Belum tepat. Coba perhatikan petunjuk materi dan pilih jawaban kembali!";
+                fbBox.className = "p-3 rounded-2xl mb-3 text-xs sm:text-sm font-bold flex items-center justify-between bg-rose-100 border border-rose-400 text-rose-900";
+
+                if (lives <= 0) {
+                    setTimeout(() => {
+                        closeQuestionModal();
+                        showGameOverModal();
+                    }, 1200);
+                } else {
+                    // Allow re-attempt after 1.2 seconds
+                    setTimeout(() => {
+                        buttons.forEach(b => b.disabled = false);
+                    }, 1200);
+                }
+            }
+        }
+
+        function nextQuestion() {
+            closeQuestionModal();
+            gameState = 'PLAYING';
+            kimi.expression = 'happy';
+        }
+
+        function closeQuestionModal() {
+            document.getElementById('question-modal').classList.add('hidden');
+        }
+
+        /* ==========================================================================
+           HINT SYSTEM
+           ========================================================================== */
+        function showHintModal() {
+            hintsUsed++;
+            let hintMsg = "Perhatikan hubungan antara hobi seseorang dengan pekerjaan/profesi yang dapat dikembangkan dari hobi tersebut!";
+            
+            if (activeQuestionPoint && activeQuestionPoint.questionData) {
+                hintMsg = activeQuestionPoint.questionData.hint;
+            }
+
+            document.getElementById('hint-modal-text').innerText = hintMsg;
+            document.getElementById('hint-modal').classList.remove('hidden');
+        }
+
+        function closeHintModal() {
+            document.getElementById('hint-modal').classList.add('hidden');
+        }
+
+        /* ==========================================================================
+           CHECKPOINT & RESTART MECHANICS
+           ========================================================================== */
+        function restartFromCheckpoint() {
+            document.getElementById('gameover-modal').classList.add('hidden');
+            lives = 3;
+            updateLivesDisplay();
+
+            // Reset question points after last checkpoint
+            questionPoints.forEach(qp => {
+                if (qp.id > lastCheckpointIndex) {
+                    qp.completed = false;
+                }
+            });
+
+            // Reposition Kimi to Checkpoint or Start
+            if (lastCheckpointIndex === 0) {
+                kimi.gridX = 0; kimi.gridY = 0;
+            } else {
+                const cpPoint = questionPoints.find(qp => qp.id === lastCheckpointIndex);
+                if (cpPoint) {
+                    kimi.gridX = cpPoint.gridX;
+                    kimi.gridY = cpPoint.gridY;
+                }
+            }
+
+            kimi.x = kimi.gridX * cellSize;
+            kimi.y = kimi.gridY * cellSize;
+            kimi.targetX = kimi.x;
+            kimi.targetY = kimi.y;
+
+            gameState = 'PLAYING';
+        }
+
+        /* ==========================================================================
+           VICTORY & RESULT SUMMARY
+           ========================================================================== */
+        function triggerVictory() {
+            gameState = 'VICTORY';
+            soundFX.playWin();
+            clearInterval(timerInterval);
+
+            // Completion Bonus
+            score += 500;
+
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-correct').innerText = `${currentQuestionIndex} / 15`;
+            document.getElementById('final-time').innerText = formatTime(timerSeconds);
+            document.getElementById('final-hints').innerText = hintsUsed;
+
+            let rank = "🏆 MASTER PROFESI";
+            if (score < 1200) rank = "💪 TERUS BERLATIH";
+            else if (score < 1700) rank = "🌟 HEBAT";
+
+            document.getElementById('final-rank').innerText = rank;
+
+            // Spawn celebrate confetti
+            for (let i = 0; i < 50; i++) {
+                spawnSparkles(canvas.width / 2, canvas.height / 2, 50);
+            }
+
+            document.getElementById('victory-modal').classList.remove('hidden');
+        }
+
+        /* ==========================================================================
+           UI UPDATES & TIMERS
+           ========================================================================== */
+        function updateUIProgress() {
+            document.getElementById('question-tracker').innerText = `${currentQuestionIndex}/15`;
+            const pct = Math.min((currentQuestionIndex / 15) * 100, 100);
+            document.getElementById('progress-bar-inner').style.width = `${pct}%`;
+        }
+
+        function updateLivesDisplay() {
+            const container = document.getElementById('lives-container');
+            container.innerHTML = '';
+            for (let i = 0; i < lives; i++) {
+                container.innerHTML += '<i class="fa-solid fa-heart animate-bounce"></i>';
+            }
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerSeconds = 0;
+            timerInterval = setInterval(() => {
+                if (gameState === 'PLAYING') {
+                    timerSeconds++;
+                    document.getElementById('timer-text').innerText = formatTime(timerSeconds);
+                }
+            }, 1000);
+        }
+
+        function formatTime(sec) {
+            const m = Math.floor(sec / 60).toString().padStart(2, '0');
+            const s = (sec % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function togglePause() {
+            if (gameState === 'PLAYING') {
+                gameState = 'PAUSED';
+                document.getElementById('pause-modal').classList.remove('hidden');
+            } else if (gameState === 'PAUSED') {
+                gameState = 'PLAYING';
+                document.getElementById('pause-modal').classList.add('hidden');
+            }
+        }
+
+        function showGameOverModal() {
+            gameState = 'GAMEOVER';
+            document.getElementById('gameover-modal').classList.remove('hidden');
+        }
+
+        function showStartScreen() {
+            document.getElementById('victory-modal').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+            gameState = 'START';
+        }
+
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            restartGame();
+        }
+
+        function restartGame() {
+            score = 0;
+            lives = 3;
+            currentQuestionIndex = 0;
+            hintsUsed = 0;
+            lastCheckpointIndex = 0;
+            document.getElementById('score-text').innerText = '0';
+            updateLivesDisplay();
+            updateUIProgress();
+
+            document.getElementById('pause-modal').classList.add('hidden');
+            document.getElementById('victory-modal').classList.add('hidden');
+            document.getElementById('gameover-modal').classList.add('hidden');
+
+            initMazeData();
+            resizeCanvas();
+            startTimer();
+            gameState = 'PLAYING';
+        }
+
+        /* ==========================================================================
+           CONTROLS & INPUT EVENT LISTENERS
+           ========================================================================== */
+        // Keyboard Arrow & WASD Navigation
+        window.addEventListener('keydown', (e) => {
+            if (gameState !== 'PLAYING') return;
+            switch(e.key) {
+                case 'ArrowUp': case 'w': case 'W': moveKimi('up'); break;
+                case 'ArrowDown': case 's': case 'S': moveKimi('down'); break;
+                case 'ArrowLeft': case 'a': case 'A': moveKimi('left'); break;
+                case 'ArrowRight': case 'd': case 'D': moveKimi('right'); break;
+            }
+        });
+
+        // Virtual D-Pad Button Handlers
+        document.getElementById('btn-up').addEventListener('click', () => moveKimi('up'));
+        document.getElementById('btn-down').addEventListener('click', () => moveKimi('down'));
+        document.getElementById('btn-left').addEventListener('click', () => moveKimi('left'));
+        document.getElementById('btn-right').addEventListener('click', () => moveKimi('right'));
+
+        // Mouse Hold / Tap Navigation on Canvas
+        let isMouseDown = false;
+        canvas.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            handleCanvasPointer(e);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isMouseDown) handleCanvasPointer(e);
+        });
+
+        window.addEventListener('mouseup', () => isMouseDown = false);
+
+        // Touch Swipe / Tap Support
+        canvas.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            handleCanvasPointer(touch);
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleCanvasPointer(touch);
+        }, { passive: false });
+
+        function handleCanvasPointer(evt) {
+            if (gameState !== 'PLAYING' || kimi.isMoving) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clickX = evt.clientX - rect.left;
+            const clickY = evt.clientY - rect.top;
+
+            const targetGridX = Math.floor(clickX / cellSize);
+            const targetGridY = Math.floor(clickY / cellSize);
+
+            if (targetGridX > kimi.gridX) moveKimi('right');
+            else if (targetGridX < kimi.gridX) moveKimi('left');
+            else if (targetGridY > kimi.gridY) moveKimi('down');
+            else if (targetGridY < kimi.gridY) moveKimi('up');
+        }
+
+        /* ==========================================================================
+           INITIALIZATION ON LOAD
+           ========================================================================== */
+        window.onload = function() {
+            initMazeData();
+            resizeCanvas();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
